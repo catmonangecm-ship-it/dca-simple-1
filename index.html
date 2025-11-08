@@ -630,18 +630,6 @@
                 router: '0x10ED43C718714eb63d5aA57B78B54704E256024E',
                 icon: '🥞',
                 color: '#d1884f'
-            },
-            biswap: {
-                name: 'Biswap',
-                router: '0x3a6d8cA21D1CF76F653A67577FA0D27453350dD8',
-                icon: '🦎',
-                color: '#1FC7D4'
-            },
-            apeswap: {
-                name: 'ApeSwap',
-                router: '0xcF0feBd3f17CEf5b47b0cD257aCf6025c5BFf3b7',
-                icon: '🦍',
-                color: '#A16552'
             }
         };
 
@@ -838,49 +826,39 @@
 
         async function compareAggregators(amount, slippage, crypto) {
             document.getElementById('comparisonSection').style.display = 'block';
-            document.getElementById('dexComparison').innerHTML = '<div style="text-align: center; padding: 20px;"><div class="loading-spinner"></div><br><br>Comparaison en cours...</div>';
+            document.getElementById('dexComparison').innerHTML = '<div style="text-align: center; padding: 20px;"><div class="loading-spinner"></div><br><br>Préparation de la transaction...</div>';
             
             document.getElementById('comparisonSection').scrollIntoView({ behavior: 'smooth' });
             
             const amountInWei = BigInt(Math.floor(amount * 1e18));
             const path = [USDT_ADDRESS, crypto.address];
             
-            const results = [];
+            const dex = DEX_AGGREGATORS.pancakeswap;
             
-            for (const [key, dex] of Object.entries(DEX_AGGREGATORS)) {
-                try {
-                    const quote = await getQuoteFromDex(dex.router, amountInWei, path);
-                    results.push({
-                        key: key,
-                        name: dex.name,
-                        icon: dex.icon,
-                        color: dex.color,
-                        router: dex.router,
-                        amountOut: quote,
-                        success: true
-                    });
-                } catch (error) {
-                    console.error(`Erreur pour ${dex.name}:`, error);
-                    results.push({
-                        key: key,
-                        name: dex.name,
-                        icon: dex.icon,
-                        color: dex.color,
-                        router: dex.router,
-                        amountOut: 0n,
-                        success: false,
-                        error: error.message
-                    });
-                }
+            try {
+                const quote = await getQuoteFromDex(dex.router, amountInWei, path);
+                const result = {
+                    key: 'pancakeswap',
+                    name: dex.name,
+                    icon: dex.icon,
+                    color: dex.color,
+                    router: dex.router,
+                    amountOut: quote,
+                    success: true
+                };
+                
+                displayDirectPurchase(result, amount, slippage, crypto);
+            } catch (error) {
+                console.error(`Erreur pour ${dex.name}:`, error);
+                document.getElementById('dexComparison').innerHTML = `
+                    <div class="alert alert-warning">
+                        ❌ Impossible de récupérer le prix. Erreur: ${error.message}
+                    </div>
+                    <div class="comparison-actions">
+                        <button class="btn btn-danger" onclick="closeComparison()">❌ Fermer</button>
+                    </div>
+                `;
             }
-            
-            results.sort((a, b) => {
-                if (!a.success) return 1;
-                if (!b.success) return -1;
-                return Number(b.amountOut - a.amountOut);
-            });
-            
-            displayComparisonResults(results, amount, slippage, crypto);
         }
 
         async function getQuoteFromDex(routerAddress, amountIn, path) {
@@ -907,60 +885,36 @@
             return amountOut;
         }
 
-        function displayComparisonResults(results, amount, slippage, crypto) {
+        function displayDirectPurchase(result, amount, slippage, crypto) {
             const container = document.getElementById('dexComparison');
             
-            const bestResult = results.find(r => r.success);
-            const bestAmountOut = bestResult ? bestResult.amountOut : 0n;
+            const amountOutFormatted = (Number(result.amountOut) / 1e18).toFixed(6);
+            const pricePerToken = (amount / (Number(result.amountOut) / 1e18)).toFixed(4);
             
-            let html = '';
-            
-            results.forEach((result, index) => {
-                const isBest = index === 0 && result.success;
-                const amountOutFormatted = result.success ? (Number(result.amountOut) / 1e18).toFixed(6) : 'N/A';
-                const pricePerToken = result.success ? (amount / (Number(result.amountOut) / 1e18)).toFixed(4) : 'N/A';
-                
-                let savingsPercent = '';
-                if (result.success && bestAmountOut > 0n && result.amountOut < bestAmountOut) {
-                    const diff = Number(bestAmountOut - result.amountOut) / Number(bestAmountOut) * 100;
-                    savingsPercent = `(-${diff.toFixed(2)}%)`;
-                }
-                
-                html += `
-                    <div class="dex-card ${isBest ? 'best' : ''}" style="border-left-color: ${result.color}">
-                        <div class="dex-header">
-                            <div class="dex-name">
-                                <span class="dex-icon">${result.icon}</span>
-                                <span>${result.name}</span>
-                            </div>
-                            ${isBest ? '<span class="best-badge">✨ MEILLEUR PRIX</span>' : ''}
+            let html = `
+                <div class="dex-card best" style="border-left-color: ${result.color}">
+                    <div class="dex-header">
+                        <div class="dex-name">
+                            <span class="dex-icon">${result.icon}</span>
+                            <span>${result.name}</span>
                         </div>
-                        
-                        ${result.success ? `
-                            <div class="dex-details">
-                                <div class="dex-detail-item">
-                                    <div class="dex-detail-label">Vous recevrez</div>
-                                    <div class="dex-detail-value" style="color: ${result.color}">${amountOutFormatted} ${crypto.symbol}</div>
-                                </div>
-                                <div class="dex-detail-item">
-                                    <div class="dex-detail-label">Prix par token</div>
-                                    <div class="dex-detail-value">${pricePerToken} USDT</div>
-                                </div>
-                            </div>
-                            ${savingsPercent ? `<div style="margin-top: 10px; color: #dc3545; font-weight: bold;">⚠️ ${savingsPercent} moins avantageux que le meilleur prix</div>` : ''}
-                        ` : `
-                            <div style="color: #dc3545; margin-top: 10px;">
-                                ❌ Indisponible ou erreur
-                            </div>
-                        `}
                     </div>
-                `;
-            });
-            
-            html += `
+                    
+                    <div class="dex-details">
+                        <div class="dex-detail-item">
+                            <div class="dex-detail-label">Vous recevrez</div>
+                            <div class="dex-detail-value" style="color: ${result.color}">${amountOutFormatted} ${crypto.symbol}</div>
+                        </div>
+                        <div class="dex-detail-item">
+                            <div class="dex-detail-label">Prix par token</div>
+                            <div class="dex-detail-value">${pricePerToken} USDT</div>
+                        </div>
+                    </div>
+                </div>
+                
                 <div class="comparison-actions">
-                    <button class="btn btn-success" onclick='executePurchaseWithBest(${amount}, ${slippage}, ${JSON.stringify(crypto)}, ${JSON.stringify(bestResult)})' style="flex: 1;">
-                        ✅ Acheter avec le meilleur prix (${bestResult.name})
+                    <button class="btn btn-success" onclick='executePurchaseWithBest(${amount}, ${slippage}, ${JSON.stringify(crypto)}, ${JSON.stringify(result)})' style="flex: 1;">
+                        ✅ Acheter sur ${result.name}
                     </button>
                     <button class="btn btn-danger" onclick="closeComparison()" style="flex: 0.3;">
                         ❌ Annuler
