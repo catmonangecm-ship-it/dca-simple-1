@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DCA Trading Bot - MetaMask (Corrigé)</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 30px;
+            animation: fadeInDown 0.8s;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .card {
+            background: white;
+            border-radius: 20px;
+            padding: 25px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            margin-bottom: 20px;
+        }
+
+        .card h2 {
+            color: #667eea;
+            margin-bottom: 20px;
+        }
+
+        .code-section {
+            background: #1e1e1e;
+            color: #d4d4d4;
+            padding: 20px;
+            border-radius: 10px;
+            overflow-x: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+
+        .code-comment {
+            color: #6a9955;
+        }
+
+        .code-change {
+            background: #2ea04326;
+            border-left: 3px solid #2ea043;
+            padding-left: 10px;
+            margin: 5px 0;
+        }
+
+        .code-old {
+            background: #f8514926;
+            border-left: 3px solid #f85149;
+            padding-left: 10px;
+            margin: 5px 0;
+            text-decoration: line-through;
+            opacity: 0.7;
+        }
+
+        .alert {
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 15px;
+            font-weight: 600;
+        }
+
+        .alert-success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .alert-warning {
+            background: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeaa7;
+        }
+
+        .alert-info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+
+        @keyframes fadeInDown {
+            from {
+                opacity: 0;
+                transform: translateY(-30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔍 Analyse du Bot DCA</h1>
+            <p>Vérification et correction du comportement</p>
+        </div>
+
+        <div class="card">
+            <h2>⚠️ Problème identifié</h2>
+            <div class="alert alert-warning">
+                Le bot DCA ne fait PAS d'achat immédiat au démarrage. Le premier achat se fait après le délai configuré (1h, 6h, 24h, etc.)
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>📊 Comportement actuel</h2>
+            <div class="code-section">
+<span class="code-comment">// Fonction startDCA actuelle (PROBLÈME)</span>
+async function startDCA() {
+    <span class="code-comment">// ... validation ...</span>
+    
+    dcaConfig = {
+        active: true,
+        crypto: selectedCrypto,
+        amount: amount,
+        interval: interval,
+        slippage: slippage,
+        <span class="code-old">nextRun: Date.now() + interval * 1000,  // ❌ Premier achat dans X heures</span>
+        stats: { totalBuys: 0, totalInvested: 0, totalTokens: 0 }
+    };
+    
+    updateDCAStatus();
+    document.getElementById('startDcaBtn').style.display = 'none';
+    document.getElementById('stopDcaBtn').style.display = 'block';
+    
+    <span class="code-comment">// Démarre le timer qui vérifie toutes les 5 secondes</span>
+    dcaInterval = setInterval(checkAndExecuteDCA, 5000);
+    
+    alert('DCA démarré !');
+}
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>✅ Solution - Code corrigé</h2>
+            <div class="alert alert-success">
+                Ajout d'un achat immédiat au démarrage du DCA, puis respect de l'intervalle configuré
+            </div>
+            
+            <div class="code-section">
+<span class="code-comment">// Fonction startDCA CORRIGÉE</span>
+async function startDCA() {
+    if (!selectedCrypto) {
+        alert('Veuillez sélectionner une crypto à acheter');
+        return;
+    }
+    
+    const amount = parseFloat(document.getElementById('amountInput').value);
+    const interval = parseInt(document.getElementById('intervalSelect').value);
+    const slippage = parseFloat(document.getElementById('slippageInput').value);
+    
+    if (!amount || amount <= 0) {
+        alert('Veuillez entrer un montant valide');
+        return;
+    }
+    
+    dcaConfig = {
+        active: true,
+        crypto: selectedCrypto,
+        amount: amount,
+        interval: interval,
+        slippage: slippage,
+        <span class="code-change">nextRun: Date.now() + interval * 1000,  // Prochain achat après l'intervalle</span>
+        stats: {
+            totalBuys: 0,
+            totalInvested: 0,
+            totalTokens: 0
+        }
+    };
+    
+    updateDCAStatus();
+    
+    document.getElementById('startDcaBtn').style.display = 'none';
+    document.getElementById('stopDcaBtn').style.display = 'block';
+    
+    <span class="code-comment">// ✅ AJOUT : Exécuter le premier achat IMMÉDIATEMENT</span>
+    <span class="code-change">alert('🚀 DCA démarré ! Lancement du premier achat immédiat...');</span>
+    <span class="code-change">await compareAggregators(amount, slippage, selectedCrypto);</span>
+    
+    <span class="code-comment">// Démarrer le timer pour les achats suivants</span>
+    dcaInterval = setInterval(checkAndExecuteDCA, 5000);
+}
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>🔄 Chronologie du DCA corrigé</h2>
+            <div class="alert alert-info">
+                <strong>Au démarrage (T=0) :</strong><br>
+                ✅ Achat immédiat avec comparaison des agrégateurs<br><br>
+                
+                <strong>Puis selon l'intervalle :</strong><br>
+                • Si intervalle = 1h → Prochain achat à T+1h<br>
+                • Si intervalle = 6h → Prochain achat à T+6h<br>
+                • Si intervalle = 24h → Prochain achat à T+24h<br>
+                • Etc.
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>📝 Autres observations</h2>
+            <ul style="line-height: 2; padding-left: 30px;">
+                <li><strong>Bouton "Acheter Maintenant"</strong> : Fonctionne correctement, fait un achat unique immédiat</li>
+                <li><strong>Comparaison agrégateurs</strong> : Le bot compare bien PancakeSwap, Biswap, ApeSwap, BakerySwap et 1inch</li>
+                <li><strong>Validation manuelle</strong> : Chaque transaction nécessite une confirmation de l'utilisateur (bouton "Valider la transaction")</li>
+                <li><strong>Historique</strong> : Conserve les 20 dernières transactions</li>
+                <li><strong>Statistiques DCA</strong> : Mise à jour automatique après chaque achat réussi</li>
+            </ul>
+        </div>
+
+        <div class="card">
+            <h2>⚡ Résumé des modifications</h2>
+            <div class="alert alert-success">
+                <strong>Ligne ajoutée dans startDCA() :</strong><br><br>
+                <code style="background: #1e1e1e; color: #2ea043; padding: 5px 10px; border-radius: 5px; display: inline-block;">
+                    await compareAggregators(amount, slippage, selectedCrypto);
+                </code>
+                <br><br>
+                Cette ligne déclenche immédiatement la comparaison et propose le premier achat dès le démarrage du DCA.
+            </div>
+        </div>
+    </div>
+</body>
+</html>
